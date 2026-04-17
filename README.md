@@ -1,4 +1,4 @@
-# EMBER — Ephemeral Chat
+# EMBER — Ephemeral Chat ( VibeCoded )
 
 A real-time two-person chat room that **self-destructs in 60 minutes**. Text, voice notes, images, and videos. No accounts, no archive, no trace.
 
