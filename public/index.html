@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>EMBER — ephemeral chat that burns in 60 minutes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,700;9..144,900&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #0c0906;
+    --ink-soft: #14100a;
+    --ember: #ff5e1f;
+    --ember-soft: #ffb07a;
+    --ash: #8a7d70;
+    --bone: #f4ede1;
+    --bone-dim: #c9bda9;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--ink);
+    color: var(--bone);
+    font-family: 'Fraunces', serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Grain & ember glow background */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 80% 10%, rgba(255, 94, 31, 0.18), transparent 60%),
+      radial-gradient(ellipse 50% 50% at 10% 90%, rgba(255, 94, 31, 0.10), transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.4 0 0 0 0 0.3 0 0 0 0 0.2 0 0 0 0.08 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    pointer-events: none;
+    opacity: 0.6;
+    mix-blend-mode: overlay;
+    z-index: 1;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 2;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 32px 40px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* -------- NAV -------- */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 40px;
+    border-bottom: 1px solid rgba(244, 237, 225, 0.08);
+  }
+  .logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--bone);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-dot {
+    width: 8px; height: 8px;
+    background: var(--ember);
+    border-radius: 50%;
+    box-shadow: 0 0 12px var(--ember), 0 0 24px var(--ember);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+  .nav-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--ash);
+    text-transform: uppercase;
+  }
+
+  /* -------- HERO -------- */
+  .hero {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 80px;
+    align-items: center;
+    padding: 80px 0 60px;
+  }
+
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--ember);
+    margin-bottom: 28px;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 32px; height: 1px;
+    background: var(--ember);
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: clamp(56px, 8.5vw, 128px);
+    line-height: 0.92;
+    letter-spacing: -0.04em;
+    color: var(--bone);
+    margin-bottom: 36px;
+  }
+  h1 em {
+    font-style: italic;
+    font-weight: 500;
+    color: var(--ember-soft);
+    font-variation-settings: "opsz" 144;
+  }
+  h1 .strike {
+    position: relative;
+    display: inline-block;
+  }
+  h1 .strike::after {
+    content: '';
+    position: absolute;
+    left: -4%; right: -4%;
+    top: 58%;
+    height: 3px;
+    background: var(--ember);
+    transform: rotate(-3deg);
+    box-shadow: 0 0 8px var(--ember);
+  }
+
+  .lede {
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--bone-dim);
+    max-width: 48ch;
+    margin-bottom: 48px;
+    font-weight: 300;
+  }
+  .lede strong {
+    color: var(--bone);
+    font-weight: 500;
+  }
+
+  .cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .btn-primary {
+    position: relative;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    padding: 22px 36px;
+    background: var(--ember);
+    color: var(--ink);
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.3s ease;
+    box-shadow: 0 0 0 rgba(255, 94, 31, 0);
+    overflow: hidden;
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(255, 94, 31, 0.35), 0 0 60px rgba(255, 94, 31, 0.2);
+  }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary svg {
+    vertical-align: -2px;
+    margin-left: 10px;
+  }
+
+  .btn-ghost {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ash);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--ash);
+    padding-bottom: 2px;
+    transition: color 0.2s;
+  }
+  .btn-ghost:hover { color: var(--bone); border-color: var(--bone); }
+
+  /* -------- VISUAL CARD (right side) -------- */
+  .visual {
+    position: relative;
+    aspect-ratio: 3 / 4;
+    border: 1px solid rgba(244, 237, 225, 0.1);
+    padding: 36px;
+    background: rgba(20, 16, 10, 0.4);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+  }
+  .visual::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 40px; height: 40px;
+    border-top: 1px solid var(--ember);
+    border-left: 1px solid var(--ember);
+  }
+  .visual::after {
+    content: '';
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 40px; height: 40px;
+    border-bottom: 1px solid var(--ember);
+    border-right: 1px solid var(--ember);
+  }
+
+  .visual-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    color: var(--ash);
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* Big analog timer */
+  .timer {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    margin: 16px auto 0;
+    max-width: 320px;
+  }
+  .timer svg { width: 100%; height: 100%; display: block; }
+  .timer-num {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    font-family: 'Fraunces', serif;
+    font-weight: 200;
+    font-size: 84px;
+    color: var(--bone);
+    font-variation-settings: "opsz" 144;
+  }
+  .timer-num small {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--ash);
+    margin-top: 4px;
+    font-weight: 400;
+  }
+
+  .visual-caption {
+    position: absolute;
+    bottom: 36px; left: 36px; right: 36px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.7;
+    color: var(--bone-dim);
+    letter-spacing: 0.05em;
+  }
+  .visual-caption span { color: var(--ember); }
+
+  /* -------- FEATURES STRIP -------- */
+  .features {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: rgba(244, 237, 225, 0.08);
+    border-top: 1px solid rgba(244, 237, 225, 0.08);
+    border-bottom: 1px solid rgba(244, 237, 225, 0.08);
+    margin-top: 40px;
+  }
+  .feat {
+    background: var(--ink);
+    padding: 32px 28px;
+  }
+  .feat-icon {
+    width: 32px; height: 32px;
+    color: var(--ember);
+    margin-bottom: 20px;
+  }
+  .feat-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+    margin-bottom: 8px;
+    color: var(--bone);
+  }
+  .feat-title em { font-style: italic; color: var(--ember-soft); }
+  .feat-desc {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--ash);
+    letter-spacing: 0.02em;
+  }
+
+  footer {
+    padding: 32px 0 12px;
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    color: var(--ash);
+    text-transform: uppercase;
+  }
+
+  /* -------- MODAL -------- */
+  .modal {
+    position: fixed; inset: 0;
+    background: rgba(12, 9, 6, 0.88);
+    backdrop-filter: blur(20px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 24px;
+  }
+  .modal.open { display: flex; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .modal-card {
+    background: var(--ink-soft);
+    border: 1px solid rgba(255, 94, 31, 0.25);
+    padding: 48px;
+    max-width: 560px;
+    width: 100%;
+    position: relative;
+    animation: riseIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+    box-shadow: 0 40px 120px rgba(255, 94, 31, 0.15);
+  }
+  @keyframes riseIn {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .modal-card::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px;
+    width: 60px; height: 60px;
+    border-top: 2px solid var(--ember);
+    border-left: 2px solid var(--ember);
+  }
+
+  .modal-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--ember);
+    margin-bottom: 16px;
+  }
+  .modal-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 36px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+  .modal-title em { font-style: italic; color: var(--ember-soft); }
+  .modal-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ash);
+    margin-bottom: 32px;
+  }
+
+  .link-box {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid rgba(244, 237, 225, 0.15);
+    background: var(--ink);
+    margin-bottom: 24px;
+  }
+  .link-box input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--bone);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    padding: 18px 20px;
+    letter-spacing: 0.02em;
+  }
+  .copy-btn {
+    background: var(--ember);
+    color: var(--ink);
+    border: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 0 28px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+  }
+  .copy-btn:hover { background: #ff7a42; }
+  .copy-btn.copied { background: #7ac88a; }
+
+  .modal-actions {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+  .join-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    padding: 14px 24px;
+    background: transparent;
+    color: var(--bone);
+    border: 1px solid rgba(244, 237, 225, 0.2);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  .join-btn:hover { border-color: var(--ember); color: var(--ember); }
+
+  .close-x {
+    position: absolute;
+    top: 20px; right: 20px;
+    background: transparent;
+    border: none;
+    color: var(--ash);
+    font-size: 24px;
+    cursor: pointer;
+    width: 32px; height: 32px;
+    line-height: 1;
+  }
+  .close-x:hover { color: var(--bone); }
+
+  @media (max-width: 900px) {
+    .wrap { padding: 24px 20px; }
+    .hero { grid-template-columns: 1fr; gap: 40px; padding: 40px 0; }
+    .visual { max-width: 380px; margin: 0 auto; aspect-ratio: 4 / 5; }
+    .features { grid-template-columns: repeat(2, 1fr); }
+    .modal-card { padding: 32px 24px; }
+  }
+  @media (max-width: 520px) {
+    .features { grid-template-columns: 1fr; }
+    h1 { font-size: 56px; }
+    .lede { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <nav>
+    <div class="logo"><span class="logo-dot"></span>EMBER / 001</div>
+    <div class="nav-meta">ZERO-TRACE · 60-MIN TTL</div>
+  </nav>
+
+  <section class="hero">
+    <div>
+      <div class="eyebrow">CHAT &nbsp;THAT&nbsp; BURNS</div>
+      <h1>
+        Say it.<br>
+        <em>Share it.</em><br>
+        <span class="strike">Forget it.</span>
+      </h1>
+      <p class="lede">
+        A private, two-person room that <strong>self-destructs in sixty minutes</strong>.
+        Text, voice notes, photos, video — gone when the embers die. No accounts.
+        No archive. No trace.
+      </p>
+      <div class="cta-row">
+        <button class="btn-primary" id="generateBtn">
+          Generate Link
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M1 7h12M8 2l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/>
+          </svg>
+        </button>
+        <a href="#how" class="btn-ghost">How it works</a>
+      </div>
+    </div>
+
+    <div class="visual">
+      <div class="visual-meta">
+        <span>// SESSION.PREVIEW</span>
+        <span>T-60:00</span>
+      </div>
+      <div class="timer">
+        <svg viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="92" fill="none" stroke="rgba(244,237,225,0.08)" stroke-width="1"/>
+          <circle cx="100" cy="100" r="82" fill="none" stroke="rgba(255,94,31,0.15)" stroke-width="1" stroke-dasharray="2 4"/>
+          <!-- tick marks -->
+          <g stroke="var(--bone-dim)" stroke-width="1">
+            <line x1="100" y1="10" x2="100" y2="22"/>
+            <line x1="190" y1="100" x2="178" y2="100"/>
+            <line x1="100" y1="190" x2="100" y2="178"/>
+            <line x1="10" y1="100" x2="22" y2="100"/>
+          </g>
+          <!-- progress arc -->
+          <circle id="progress" cx="100" cy="100" r="92" fill="none"
+                  stroke="var(--ember)" stroke-width="2"
+                  stroke-dasharray="578" stroke-dashoffset="0"
+                  transform="rotate(-90 100 100)"
+                  style="filter: drop-shadow(0 0 6px var(--ember));"/>
+        </svg>
+        <div class="timer-num">60<small>MINUTES</small></div>
+      </div>
+      <div class="visual-caption">
+        <span>→</span> Auto-purge on expiry. Nothing stored. Nothing recovered.
+      </div>
+    </div>
+  </section>
+
+  <section class="features" id="how">
+    <div class="feat">
+      <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M4 6h16M4 12h12M4 18h8" stroke-linecap="square"/>
+      </svg>
+      <div class="feat-title">Live <em>text</em></div>
+      <div class="feat-desc">Instant messaging with typing indicators. Feels real, stays ephemeral.</div>
+    </div>
+    <div class="feat">
+      <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="9" y="3" width="6" height="12" rx="3"/>
+        <path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke-linecap="square"/>
+      </svg>
+      <div class="feat-title">Voice <em>notes</em></div>
+      <div class="feat-desc">Tap, hold, speak. Share moments that vanish with the room.</div>
+    </div>
+    <div class="feat">
+      <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="5" width="18" height="14" rx="1"/>
+        <circle cx="8.5" cy="10.5" r="1.5"/>
+        <path d="M21 15l-5-5-9 9"/>
+      </svg>
+      <div class="feat-title">Photo <em>&amp; video</em></div>
+      <div class="feat-desc">Drop images and clips up to 25MB. Previewed inline, purged on expiry.</div>
+    </div>
+    <div class="feat">
+      <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 7v5l3 2" stroke-linecap="square"/>
+      </svg>
+      <div class="feat-title">60-minute <em>TTL</em></div>
+      <div class="feat-desc">A live countdown in-room. When it hits zero, everything burns.</div>
+    </div>
+  </section>
+
+  <footer>
+    <span>© EMBER — NO LOGS, NO ACCOUNTS</span>
+    <span>BUILT FOR MOMENTS, NOT ARCHIVES</span>
+  </footer>
+</div>
+
+<!-- Generate Link Modal -->
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <button class="close-x" id="closeModal">×</button>
+    <div class="modal-label">LINK · READY</div>
+    <h2 class="modal-title">Your room is <em>lit</em>.</h2>
+    <p class="modal-sub">This link is valid for 60 minutes. Share it with one other person.</p>
+    <div class="link-box">
+      <input id="linkInput" readonly />
+      <button class="copy-btn" id="copyBtn">COPY</button>
+    </div>
+    <div class="modal-actions">
+      <a id="enterBtn" class="join-btn" href="#">Enter the room →</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Animate the preview progress ring on the landing page
+  const ring = document.getElementById('progress');
+  let t = 0;
+  setInterval(() => {
+    t = (t + 0.005) % 1;
+    ring.setAttribute('stroke-dashoffset', (578 * t).toString());
+  }, 40);
+
+  const modal = document.getElementById('modal');
+  const generateBtn = document.getElementById('generateBtn');
+  const closeModal = document.getElementById('closeModal');
+  const linkInput = document.getElementById('linkInput');
+  const copyBtn = document.getElementById('copyBtn');
+  const enterBtn = document.getElementById('enterBtn');
+
+  generateBtn.addEventListener('click', async () => {
+    generateBtn.disabled = true;
+    generateBtn.textContent = 'Igniting…';
+    try {
+      const res = await fetch('/api/session', { method: 'POST' });
+      const data = await res.json();
+      const fullUrl = `${window.location.origin}${data.url}`;
+      linkInput.value = fullUrl;
+      enterBtn.href = data.url;
+      modal.classList.add('open');
+    } catch (e) {
+      alert('Could not create session. Try again.');
+    } finally {
+      generateBtn.disabled = false;
+      generateBtn.innerHTML = 'Generate Link <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7h12M8 2l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/></svg>';
+    }
+  });
+
+  closeModal.addEventListener('click', () => modal.classList.remove('open'));
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
+
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(linkInput.value);
+    } catch {
+      linkInput.select();
+      document.execCommand('copy');
+    }
+    copyBtn.textContent = 'COPIED';
+    copyBtn.classList.add('copied');
+    setTimeout(() => {
+      copyBtn.textContent = 'COPY';
+      copyBtn.classList.remove('copied');
+    }, 1800);
+  });
+</script>
+</body>
+</html>
