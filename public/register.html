@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ephemeral — Create account</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #0a0812;
+  --surface:  #111020;
+  --border:   rgba(255,255,255,0.07);
+  --border-f: rgba(139,92,246,0.4);
+  --ember:    #ff5e1f;
+  --ember-l:  #ff8c52;
+  --violet:   #8b5cf6;
+  --violet-l: #a78bfa;
+  --green:    #34d399;
+  --red:      #f87171;
+  --text:     #ede9fe;
+  --text-2:   #9d8fb5;
+  --text-3:   #5c5270;
+  --mono:     'JetBrains Mono', monospace;
+  --sans:     'Inter', sans-serif;
+  --serif:    'Fraunces', serif;
+  --ease:     cubic-bezier(0.4, 0, 0.2, 1);
+}
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 50% at 15% 30%, rgba(139,92,246,0.1), transparent 55%),
+    radial-gradient(ellipse 55% 45% at 90% 75%, rgba(255,94,31,0.07), transparent 50%);
+}
+
+.split { min-height: 100vh; display: grid; grid-template-columns: 480px 1fr; }
+
+/* RIGHT (form) */
+.panel-form {
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 60px 52px; border-right: 1px solid var(--border);
+  animation: slideIn 0.4s var(--ease) both;
+}
+@keyframes slideIn { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+
+.form-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; margin-bottom: 52px; }
+.logo-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ember); box-shadow: 0 0 8px rgba(255,94,31,0.5); animation: breathe 3s ease-in-out infinite; }
+@keyframes breathe { 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:0.4; transform:scale(0.7); } }
+.logo-name { font-family: var(--serif); font-size: 17px; color: var(--text); }
+
+.form-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ember); margin-bottom: 10px; }
+.form-title { font-family: var(--serif); font-size: 28px; font-weight: 300; font-style: italic; color: var(--text); margin-bottom: 6px; }
+.form-sub { font-size: 13px; color: var(--text-3); margin-bottom: 36px; }
+.form-sub a { color: var(--violet-l); text-decoration: none; }
+.form-sub a:hover { text-decoration: underline; }
+
+.alert { display: none; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.05em; line-height: 1.5; }
+.alert.show { display: block; }
+.alert.error   { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); color: var(--red); }
+.alert.success { background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.2); color: var(--green); }
+
+.field { margin-bottom: 16px; }
+.field-label { display: flex; justify-content: space-between; font-family: var(--sans); font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 8px; }
+.field-hint { font-size: 11px; font-weight: 400; color: var(--text-3); }
+.field-input-wrap { position: relative; }
+.field-input {
+  width: 100%; height: 44px; padding: 0 42px 0 14px; border-radius: 8px;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+  color: var(--text); font-family: var(--sans); font-size: 14px; outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.field-input::placeholder { color: var(--text-3); }
+.field-input:hover { border-color: rgba(255,255,255,0.12); }
+.field-input:focus { border-color: var(--border-f); background: rgba(139,92,246,0.04); box-shadow: 0 0 0 3px rgba(139,92,246,0.1); }
+.field-input.valid { border-color: rgba(52,211,153,0.35); }
+.field-input.error { border-color: rgba(239,68,68,0.4); }
+.field-input.error:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.08); }
+
+.eye-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-3); padding: 4px; display: flex; align-items: center; transition: color 0.15s; }
+.eye-btn:hover { color: var(--text-2); }
+.eye-btn svg { width: 16px; height: 16px; }
+
+/* Strength bar */
+.strength-wrap { margin-top: 8px; display: flex; gap: 4px; align-items: center; }
+.strength-segs { display: flex; gap: 3px; flex: 1; }
+.strength-seg { height: 3px; flex: 1; border-radius: 2px; background: rgba(255,255,255,0.08); transition: background 0.3s; }
+.strength-seg.s1 { background: var(--red); }
+.strength-seg.s2 { background: #fb923c; }
+.strength-seg.s3 { background: #facc15; }
+.strength-seg.s4 { background: var(--green); }
+.strength-label { font-family: var(--mono); font-size: 10px; color: var(--text-3); min-width: 40px; text-align: right; }
+
+/* Field status */
+.field-msg { min-height: 18px; margin-top: 6px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.05em; display: none; align-items: center; gap: 5px; }
+.field-msg.show { display: flex; }
+.field-msg.ok  { color: var(--green); }
+.field-msg.err { color: var(--red); }
+
+.btn-submit {
+  width: 100%; height: 44px; border-radius: 8px; border: none; margin-top: 8px;
+  background: var(--ember); color: #fff; font-family: var(--sans);
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+  position: relative; overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 2px 12px rgba(255,94,31,0.2);
+}
+.btn-submit::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(255,255,255,0.1), transparent); }
+.btn-submit:hover { background: var(--ember-l); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(255,94,31,0.35); }
+.btn-submit:active { transform: translateY(0); }
+.btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.terms { font-size: 11px; color: var(--text-3); text-align: center; margin-top: 20px; line-height: 1.6; }
+.terms a { color: var(--text-3); text-decoration: underline; text-underline-offset: 2px; }
+
+/* LEFT: visual panel */
+.panel-visual {
+  background: var(--surface); display: flex; flex-direction: column;
+  justify-content: center; align-items: center; padding: 60px 48px;
+  position: relative; overflow: hidden;
+}
+.panel-visual::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 60% 60% at 70% 40%, rgba(139,92,246,0.1), transparent 60%);
+}
+
+.visual-inner { position: relative; z-index: 1; text-align: center; max-width: 400px; }
+.visual-title {
+  font-family: var(--serif); font-size: clamp(40px, 4vw, 62px);
+  font-weight: 300; font-style: italic; line-height: 1.1; letter-spacing: -0.02em;
+  color: var(--text); margin-bottom: 24px;
+}
+.visual-title em { color: var(--ember-l); font-style: normal; }
+.visual-desc { font-size: 14px; color: var(--text-2); line-height: 1.7; margin-bottom: 48px; }
+
+/* Stat grid */
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 48px; }
+.stat-cell { background: var(--surface); padding: 20px 16px; text-align: center; transition: background 0.2s; }
+.stat-cell:hover { background: rgba(255,255,255,0.03); }
+.stat-val { font-family: var(--serif); font-size: 32px; font-weight: 300; color: var(--text); display: block; }
+.stat-key { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); display: block; margin-top: 4px; }
+
+/* Tagline */
+.tagline-strip { display: flex; gap: 8px; justify-content: center; }
+.tagline-item { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--text-3); padding: 5px 14px; border: 1px solid var(--border); border-radius: 100px; }
+.tagline-item.lit { color: var(--ember-l); border-color: rgba(255,94,31,0.25); background: rgba(255,94,31,0.05); }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .split { grid-template-columns: 1fr; }
+  .panel-visual { display: none; }
+  .panel-form { min-height: 100vh; border-right: none; padding: 40px 24px; }
+  .form-logo { margin-bottom: 36px; }
+}
+</style>
+</head>
+<body>
+<div class="split">
+  <div class="panel-form">
+    <a href="/" class="form-logo">
+      <span class="logo-dot"></span>
+      <span class="logo-name">Ephemeral</span>
+    </a>
+
+    <div class="form-eyebrow">New account</div>
+    <h2 class="form-title">Create your account.</h2>
+    <p class="form-sub">Already have one? <a href="/login.html">Sign in →</a></p>
+
+    <div class="alert" id="alertBanner"></div>
+
+    <div class="field">
+      <div class="field-label">Email</div>
+      <div class="field-input-wrap">
+        <input id="email" class="field-input" type="email" placeholder="you@example.com" autocomplete="email" />
+      </div>
+      <div class="field-msg" id="emailMsg"></div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">
+        <span>Password</span>
+        <span class="field-hint">min. 8 characters</span>
+      </div>
+      <div class="field-input-wrap">
+        <input id="password" class="field-input" type="password" placeholder="••••••••" autocomplete="new-password" />
+        <button class="eye-btn" id="eyeBtn" type="button">
+          <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+      <div class="strength-wrap">
+        <div class="strength-segs">
+          <div class="strength-seg" id="s1"></div>
+          <div class="strength-seg" id="s2"></div>
+          <div class="strength-seg" id="s3"></div>
+          <div class="strength-seg" id="s4"></div>
+        </div>
+        <div class="strength-label" id="sLabel"></div>
+      </div>
+      <div class="field-msg" id="pwMsg"></div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">Confirm password</div>
+      <div class="field-input-wrap">
+        <input id="confirm" class="field-input" type="password" placeholder="••••••••" autocomplete="new-password" />
+      </div>
+      <div class="field-msg" id="cfMsg"></div>
+    </div>
+
+    <button class="btn-submit" id="submitBtn">Create account</button>
+    <p class="terms">By creating an account you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</p>
+  </div>
+
+  <div class="panel-visual">
+    <div class="visual-inner">
+      <h2 class="visual-title">Light the match.<br>Start the <em>clock</em>.</h2>
+      <p class="visual-desc">One account. Every room burns itself clean after sixty minutes. No logs, no archive, nothing stored.</p>
+      <div class="stat-grid">
+        <div class="stat-cell"><span class="stat-val">60</span><span class="stat-key">Min rooms</span></div>
+        <div class="stat-cell"><span class="stat-val">∞</span><span class="stat-key">Rooms / day</span></div>
+        <div class="stat-cell"><span class="stat-val">0</span><span class="stat-key">Logs kept</span></div>
+      </div>
+      <div class="tagline-strip">
+        <span class="tagline-item lit">Say it</span>
+        <span class="tagline-item lit">Share it</span>
+        <span class="tagline-item">Forget it</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const sb = supabase.createClient(
+  'https://gljtgjqfnpxrausecrcu.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsanRnanFmbnB4cmF1c2VjcmN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNTMxMTksImV4cCI6MjA5NTcyOTExOX0.KHUYJGVS_6EBzpYkGoKgBikkBavYs3V4hYetAPC-avc'
+);
+
+const emailEl   = document.getElementById('email');
+const pwEl      = document.getElementById('password');
+const cfEl      = document.getElementById('confirm');
+const submitBtn = document.getElementById('submitBtn');
+const alertEl   = document.getElementById('alertBanner');
+const emailMsg  = document.getElementById('emailMsg');
+const pwMsg     = document.getElementById('pwMsg');
+const cfMsg     = document.getElementById('cfMsg');
+const sLabel    = document.getElementById('sLabel');
+const segs      = [1,2,3,4].map(i => document.getElementById('s'+i));
+
+function showAlert(type, msg) { alertEl.textContent = msg; alertEl.className = `alert show ${type}`; }
+function clearAlert() { alertEl.className = 'alert'; }
+function setMsg(el, type, txt) { el.textContent = txt; el.className = `field-msg show ${type}`; }
+function clearMsg(el) { el.className = 'field-msg'; }
+
+// Eye toggle
+let pwVis = false;
+document.getElementById('eyeBtn').addEventListener('click', () => {
+  pwVis = !pwVis; pwEl.type = pwVis ? 'text' : 'password';
+  document.getElementById('eyeIcon').innerHTML = pwVis
+    ? `<path d="M17.94 17.94A10 10 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`
+    : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+});
+
+// Password strength
+function score(pw) {
+  let s = 0;
+  if (pw.length >= 8) s++;
+  if (pw.length >= 12) s++;
+  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) s++;
+  if (/[0-9]/.test(pw)) s++;
+  if (/[^A-Za-z0-9]/.test(pw)) s = Math.min(s+1, 4);
+  return Math.min(s, 4);
+}
+pwEl.addEventListener('input', () => {
+  pwEl.classList.remove('error', 'valid');
+  clearMsg(pwMsg);
+  const pw = pwEl.value, sc = score(pw);
+  segs.forEach((seg, i) => { seg.className = 'strength-seg' + (i < sc ? ` s${sc}` : ''); });
+  const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+  sLabel.textContent = pw ? labels[sc] : '';
+  if (pw && sc < 2) setMsg(pwMsg, 'err', 'Use a stronger password');
+  else if (pw && sc >= 3) { pwEl.classList.add('valid'); setMsg(pwMsg, 'ok', '✓ Strong password'); }
+  checkConfirm();
+});
+
+function checkConfirm() {
+  const pw = pwEl.value, cf = cfEl.value; if (!cf) return;
+  cfEl.classList.remove('error', 'valid');
+  clearMsg(cfMsg);
+  if (cf === pw) { cfEl.classList.add('valid'); setMsg(cfMsg, 'ok', '✓ Passwords match'); }
+  else { cfEl.classList.add('error'); setMsg(cfMsg, 'err', '✗ Passwords do not match'); }
+}
+cfEl.addEventListener('input', checkConfirm);
+
+// Email debounce
+let emailTimer;
+emailEl.addEventListener('input', () => {
+  emailEl.classList.remove('error', 'valid'); clearMsg(emailMsg);
+  clearTimeout(emailTimer);
+  emailTimer = setTimeout(() => {
+    const v = emailEl.value.trim();
+    if (!v) return;
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { emailEl.classList.add('valid'); setMsg(emailMsg, 'ok', '✓ Valid email'); }
+    else { emailEl.classList.add('error'); setMsg(emailMsg, 'err', 'Enter a valid email address'); }
+  }, 500);
+});
+
+// Submit
+submitBtn.addEventListener('click', async () => {
+  clearAlert();
+  const email = emailEl.value.trim(), pw = pwEl.value, cf = cfEl.value;
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { emailEl.classList.add('error'); emailEl.focus(); return; }
+  if (pw.length < 8) { pwEl.classList.add('error'); pwEl.focus(); return; }
+  if (pw !== cf) { cfEl.classList.add('error'); cfEl.focus(); return; }
+  submitBtn.disabled = true; submitBtn.textContent = 'Creating…';
+  const { error } = await sb.auth.signUp({ email, password: pw });
+  if (error) {
+    submitBtn.disabled = false; submitBtn.textContent = 'Create account';
+    if (error.message.toLowerCase().includes('already')) { emailEl.classList.add('error'); showAlert('error', 'This email is already registered. Try signing in.'); }
+    else showAlert('error', error.message);
+    return;
+  }
+  showAlert('success', '🔥 Account created! Redirecting to sign in…');
+  setTimeout(() => window.location.href = '/login.html', 1600);
+});
+
+[emailEl, pwEl, cfEl].forEach(el => el.addEventListener('keydown', e => { if (e.key==='Enter') submitBtn.click(); }));
+</script>
+</body>
+</html>
