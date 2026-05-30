@@ -136,6 +136,14 @@ app.post('/api/upload/:sessionId', upload.single('file'), (req, res) => {
   });
 });
 
+// Manually destroy a session (End Room button)
+app.delete('/api/session/:id', (req, res) => {
+  const session = sessions.get(req.params.id);
+  if (!session) return res.status(404).json({ error: 'Session not found or already expired' });
+  destroySession(req.params.id, 'deleted');
+  res.json({ ok: true });
+});
+
 // Pretty session URL -> serves the chat page
 app.get('/s/:id', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'chat.html'));

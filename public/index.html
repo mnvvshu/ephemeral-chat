@@ -2,660 +2,641 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-<title>EMBER — ephemeral chat that burns in 60 minutes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ephemeral — Private chats that self-destruct</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<meta name="description" content="A private two-person chat room that self-destructs in 60 minutes. No logs, no accounts, no trace." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,700;9..144,900&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
-  :root {
-    --ink: #0c0906;
-    --ink-soft: #14100a;
-    --ember: #ff5e1f;
-    --ember-soft: #ffb07a;
-    --ash: #8a7d70;
-    --bone: #f4ede1;
-    --bone-dim: #c9bda9;
-  }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #0a0812;
+  --surface:  #111020;
+  --border:   rgba(255,255,255,0.07);
+  --border-h: rgba(255,255,255,0.13);
+  --ember:    #ff5e1f;
+  --ember-l:  #ff8c52;
+  --violet:   #8b5cf6;
+  --violet-l: #a78bfa;
+  --text:     #ede9fe;
+  --text-2:   #9d8fb5;
+  --text-3:   #5c5270;
+  --gold:     #d4a84b;
+  --mono:     'JetBrains Mono', monospace;
+  --sans:     'Inter', sans-serif;
+  --serif:    'Fraunces', serif;
+  --ease:     cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+}
 
-  html, body {
-    background: var(--ink);
-    color: var(--bone);
-    font-family: 'Fraunces', serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-    -webkit-font-smoothing: antialiased;
-  }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: var(--sans); font-size: 15px;
+  line-height: 1.6; -webkit-font-smoothing: antialiased;
+  overflow-x: hidden; min-height: 100vh;
+}
 
-  /* Grain & ember glow background */
-  body::before {
-    content: '';
-    position: fixed; inset: 0;
-    background:
-      radial-gradient(ellipse 60% 40% at 80% 10%, rgba(255, 94, 31, 0.18), transparent 60%),
-      radial-gradient(ellipse 50% 50% at 10% 90%, rgba(255, 94, 31, 0.10), transparent 60%);
-    pointer-events: none;
-    z-index: 0;
-  }
-  body::after {
-    content: '';
-    position: fixed; inset: 0;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.4 0 0 0 0 0.3 0 0 0 0 0.2 0 0 0 0.08 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-    pointer-events: none;
-    opacity: 0.6;
-    mix-blend-mode: overlay;
-    z-index: 1;
-  }
+/* Subtle background gradient — ONE, not five */
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(ellipse 80% 60% at 70% -10%, rgba(139,92,246,0.12) 0%, transparent 60%);
+}
 
-  .wrap {
-    position: relative;
-    z-index: 2;
-    max-width: 1180px;
-    margin: 0 auto;
-    padding: 32px 40px;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
+#bgCanvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.6; }
 
-  /* -------- NAV -------- */
-  nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-bottom: 40px;
-    border-bottom: 1px solid rgba(244, 237, 225, 0.08);
-  }
-  .logo {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: var(--bone);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .logo-dot {
-    width: 8px; height: 8px;
-    background: var(--ember);
-    border-radius: 50%;
-    box-shadow: 0 0 12px var(--ember), 0 0 24px var(--ember);
-    animation: pulse 2.4s ease-in-out infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(0.85); }
-  }
-  .nav-meta {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    color: var(--ash);
-    text-transform: uppercase;
-  }
+/* ── Page fade in — just once, smooth ── */
+.page { position: relative; z-index: 1; opacity: 0; transition: opacity 0.5s var(--ease-out); }
+.page.ready { opacity: 1; }
 
-  /* -------- HERO -------- */
-  .hero {
-    flex: 1;
-    display: grid;
-    grid-template-columns: 1.15fr 1fr;
-    gap: 80px;
-    align-items: center;
-    padding: 80px 0 60px;
-  }
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  height: 60px; padding: 0 32px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(10, 8, 18, 0.75); backdrop-filter: blur(16px) saturate(180%);
+  border-bottom: 1px solid var(--border);
+  transition: border-color 0.3s;
+}
+nav.scrolled { border-color: var(--border-h); }
 
-  .eyebrow {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: var(--ember);
-    margin-bottom: 28px;
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .eyebrow::before {
-    content: '';
-    width: 32px; height: 1px;
-    background: var(--ember);
-  }
+.nav-logo {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--serif); font-size: 17px; font-weight: 400;
+  color: var(--text); letter-spacing: -0.01em; text-decoration: none;
+}
+.nav-logo-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 8px rgba(255,94,31,0.6);
+  animation: breathe 3s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.75); }
+}
 
-  h1 {
-    font-family: 'Fraunces', serif;
-    font-weight: 300;
-    font-size: clamp(56px, 8.5vw, 128px);
-    line-height: 0.92;
-    letter-spacing: -0.04em;
-    color: var(--bone);
-    margin-bottom: 36px;
-  }
-  h1 em {
-    font-style: italic;
-    font-weight: 500;
-    color: var(--ember-soft);
-    font-variation-settings: "opsz" 144;
-  }
-  h1 .strike {
-    position: relative;
-    display: inline-block;
-  }
-  h1 .strike::after {
-    content: '';
-    position: absolute;
-    left: -4%; right: -4%;
-    top: 58%;
-    height: 3px;
-    background: var(--ember);
-    transform: rotate(-3deg);
-    box-shadow: 0 0 8px var(--ember);
-  }
+.nav-links {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--sans); font-size: 13px;
+}
+.nav-link {
+  color: var(--text-2); text-decoration: none; padding: 6px 12px;
+  border-radius: 6px; transition: color 0.2s, background 0.2s;
+  font-weight: 400;
+}
+.nav-link:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+.nav-btn {
+  padding: 7px 16px; border-radius: 7px; font-size: 13px; font-weight: 500;
+  background: rgba(139,92,246,0.15); color: var(--violet-l);
+  border: 1px solid rgba(139,92,246,0.25); cursor: pointer; font-family: var(--sans);
+  text-decoration: none; transition: all 0.2s;
+}
+.nav-btn:hover { background: rgba(139,92,246,0.25); border-color: rgba(139,92,246,0.5); }
+#authNavContent { display: flex; align-items: center; gap: 8px; }
+.sign-out-text {
+  font-family: var(--sans); font-size: 12px; color: var(--text-3); padding: 6px 10px; cursor: pointer;
+  border: 1px solid transparent; border-radius: 6px; background: none; transition: all 0.2s;
+}
+.sign-out-text:hover { color: var(--text-2); border-color: var(--border); }
 
-  .lede {
-    font-size: 19px;
-    line-height: 1.55;
-    color: var(--bone-dim);
-    max-width: 48ch;
-    margin-bottom: 48px;
-    font-weight: 300;
-  }
-  .lede strong {
-    color: var(--bone);
-    font-weight: 500;
-  }
+/* ── HERO ── */
+.hero {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center;
+  padding: 120px 24px 80px;
+}
 
-  .cta-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 20px;
-  }
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--violet-l); border: 1px solid rgba(139,92,246,0.2);
+  background: rgba(139,92,246,0.06); padding: 5px 14px; border-radius: 100px;
+  margin-bottom: 40px;
+  opacity: 0; transform: translateY(12px);
+  transition: opacity 0.5s var(--ease-out), transform 0.5s var(--ease-out);
+}
+.hero-badge.in { opacity: 1; transform: translateY(0); }
+.hero-badge-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--violet); animation: breathe 2s ease-in-out infinite; }
 
-  .btn-primary {
-    position: relative;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    padding: 22px 36px;
-    background: var(--ember);
-    color: var(--ink);
-    border: none;
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.3s ease;
-    box-shadow: 0 0 0 rgba(255, 94, 31, 0);
-    overflow: hidden;
-  }
-  .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 40px rgba(255, 94, 31, 0.35), 0 0 60px rgba(255, 94, 31, 0.2);
-  }
-  .btn-primary:active { transform: translateY(0); }
-  .btn-primary svg {
-    vertical-align: -2px;
-    margin-left: 10px;
-  }
+.hero-title {
+  font-family: var(--serif); font-weight: 300;
+  font-size: clamp(52px, 7.5vw, 108px);
+  line-height: 1.0; letter-spacing: -0.03em;
+  color: var(--text); margin-bottom: 28px;
+  opacity: 0; transform: translateY(20px);
+  transition: opacity 0.6s var(--ease-out) 0.1s, transform 0.6s var(--ease-out) 0.1s;
+}
+.hero-title.in { opacity: 1; transform: translateY(0); }
+.hero-title em { font-style: italic; color: var(--ember-l); }
+.hero-title .through {
+  position: relative; display: inline-block;
+  color: var(--text-3);
+}
+.hero-title .through::after {
+  content: ''; position: absolute;
+  left: 0; right: 0; top: 54%; height: 2px;
+  background: linear-gradient(90deg, var(--violet), var(--ember));
+  border-radius: 2px; transform: scaleX(0); transform-origin: left;
+  transition: transform 0.5s var(--ease-out) 0.9s;
+}
+.hero-title.in .through::after { transform: scaleX(1); }
 
-  .btn-ghost {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    color: var(--ash);
-    text-decoration: none;
-    border-bottom: 1px dashed var(--ash);
-    padding-bottom: 2px;
-    transition: color 0.2s;
-  }
-  .btn-ghost:hover { color: var(--bone); border-color: var(--bone); }
+.hero-sub {
+  font-size: 16px; line-height: 1.7; color: var(--text-2); max-width: 500px;
+  margin: 0 auto 52px; font-weight: 300;
+  opacity: 0; transform: translateY(16px);
+  transition: opacity 0.6s var(--ease-out) 0.2s, transform 0.6s var(--ease-out) 0.2s;
+}
+.hero-sub.in { opacity: 1; transform: translateY(0); }
 
-  /* -------- VISUAL CARD (right side) -------- */
-  .visual {
-    position: relative;
-    aspect-ratio: 3 / 4;
-    border: 1px solid rgba(244, 237, 225, 0.1);
-    padding: 36px;
-    background: rgba(20, 16, 10, 0.4);
-    backdrop-filter: blur(10px);
-    overflow: hidden;
-  }
-  .visual::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 40px; height: 40px;
-    border-top: 1px solid var(--ember);
-    border-left: 1px solid var(--ember);
-  }
-  .visual::after {
-    content: '';
-    position: absolute;
-    bottom: 0; right: 0;
-    width: 40px; height: 40px;
-    border-bottom: 1px solid var(--ember);
-    border-right: 1px solid var(--ember);
-  }
+.hero-actions {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center;
+  opacity: 0; transform: translateY(12px);
+  transition: opacity 0.5s var(--ease-out) 0.3s, transform 0.5s var(--ease-out) 0.3s;
+}
+.hero-actions.in { opacity: 1; transform: translateY(0); }
 
-  .visual-meta {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.25em;
-    color: var(--ash);
-    text-transform: uppercase;
-    margin-bottom: 24px;
-    display: flex;
-    justify-content: space-between;
-  }
+/* Primary CTA */
+.btn-cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 13px 28px; border-radius: 9px;
+  background: var(--ember); color: #fff;
+  font-family: var(--sans); font-size: 14px; font-weight: 600;
+  border: none; cursor: pointer; text-decoration: none;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 16px rgba(255,94,31,0.25);
+  position: relative; overflow: hidden;
+}
+.btn-cta::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.12), transparent);
+  pointer-events: none;
+}
+.btn-cta:hover { background: var(--ember-l); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(255,94,31,0.4); }
+.btn-cta:active { transform: translateY(0); }
+.btn-cta svg { width: 15px; height: 15px; }
 
-  /* Big analog timer */
-  .timer {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 1 / 1;
-    margin: 16px auto 0;
-    max-width: 320px;
-  }
-  .timer svg { width: 100%; height: 100%; display: block; }
-  .timer-num {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    font-family: 'Fraunces', serif;
-    font-weight: 200;
-    font-size: 84px;
-    color: var(--bone);
-    font-variation-settings: "opsz" 144;
-  }
-  .timer-num small {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.3em;
-    color: var(--ash);
-    margin-top: 4px;
-    font-weight: 400;
-  }
+.btn-secondary {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 13px 22px; border-radius: 9px;
+  background: rgba(255,255,255,0.04); color: var(--text-2);
+  font-family: var(--sans); font-size: 14px; font-weight: 400;
+  border: 1px solid var(--border); cursor: pointer; text-decoration: none;
+  transition: all 0.2s;
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.07); color: var(--text); border-color: var(--border-h); }
 
-  .visual-caption {
-    position: absolute;
-    bottom: 36px; left: 36px; right: 36px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    line-height: 1.7;
-    color: var(--bone-dim);
-    letter-spacing: 0.05em;
-  }
-  .visual-caption span { color: var(--ember); }
+/* ── SPHERE ── */
+.sphere-wrap {
+  position: relative; width: 420px; max-width: 90vw; aspect-ratio: 1;
+  margin: 72px auto 0;
+  opacity: 0; transform: translateY(20px) scale(0.96);
+  transition: opacity 0.8s var(--ease-out) 0.4s, transform 0.8s var(--ease-out) 0.4s;
+}
+.sphere-wrap.in { opacity: 1; transform: translateY(0) scale(1); }
+#sphere { width: 100%; height: 100%; display: block; }
+.sphere-label {
+  position: absolute; bottom: -32px; left: 50%; transform: translateX(-50%);
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-3); white-space: nowrap;
+}
 
-  /* -------- FEATURES STRIP -------- */
-  .features {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1px;
-    background: rgba(244, 237, 225, 0.08);
-    border-top: 1px solid rgba(244, 237, 225, 0.08);
-    border-bottom: 1px solid rgba(244, 237, 225, 0.08);
-    margin-top: 40px;
-  }
-  .feat {
-    background: var(--ink);
-    padding: 32px 28px;
-  }
-  .feat-icon {
-    width: 32px; height: 32px;
-    color: var(--ember);
-    margin-bottom: 20px;
-  }
-  .feat-title {
-    font-family: 'Fraunces', serif;
-    font-weight: 400;
-    font-size: 22px;
-    letter-spacing: -0.01em;
-    margin-bottom: 8px;
-    color: var(--bone);
-  }
-  .feat-title em { font-style: italic; color: var(--ember-soft); }
-  .feat-desc {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    line-height: 1.6;
-    color: var(--ash);
-    letter-spacing: 0.02em;
-  }
+/* ── FEATURES ── */
+.features-section {
+  padding: 100px 24px; max-width: 1100px; margin: 0 auto;
+}
+.section-label {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--text-3); margin-bottom: 48px; text-align: center;
+}
+.features-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+  border: 1px solid var(--border); background: var(--border);
+}
+.feat-card {
+  background: var(--bg); padding: 36px 32px;
+  transition: background 0.2s;
+  opacity: 0; transform: translateY(24px);
+  transition: opacity 0.5s var(--ease-out), transform 0.5s var(--ease-out), background 0.2s;
+}
+.feat-card.in { opacity: 1; transform: translateY(0); }
+.feat-card:hover { background: var(--surface); }
+.feat-icon-wrap {
+  width: 38px; height: 38px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,94,31,0.1); margin-bottom: 20px;
+  transition: background 0.2s;
+}
+.feat-card:hover .feat-icon-wrap { background: rgba(255,94,31,0.18); }
+.feat-icon-wrap svg { width: 18px; height: 18px; color: var(--ember); }
+.feat-name {
+  font-family: var(--serif); font-size: 18px; font-weight: 400; font-style: italic;
+  color: var(--text); margin-bottom: 8px; letter-spacing: -0.01em;
+}
+.feat-desc { font-family: var(--sans); font-size: 13px; color: var(--text-3); line-height: 1.6; }
 
-  footer {
-    padding: 32px 0 12px;
-    display: flex;
-    justify-content: space-between;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.25em;
-    color: var(--ash);
-    text-transform: uppercase;
-  }
+/* ── HOW ── */
+.how-section {
+  padding: 80px 24px 120px; max-width: 600px; margin: 0 auto; text-align: center;
+}
+.how-steps { display: flex; flex-direction: column; gap: 0; margin-top: 48px; }
+.how-step {
+  display: flex; align-items: flex-start; gap: 24px; padding: 28px 0;
+  border-bottom: 1px solid var(--border); text-align: left;
+}
+.how-step:last-child { border-bottom: none; }
+.step-num {
+  font-family: var(--mono); font-size: 11px; color: var(--ember); letter-spacing: 0.1em;
+  padding-top: 3px; flex-shrink: 0; width: 28px;
+}
+.step-title { font-family: var(--serif); font-size: 20px; font-weight: 400; color: var(--text); margin-bottom: 6px; font-style: italic; }
+.step-desc { font-size: 13px; color: var(--text-3); line-height: 1.6; }
 
-  /* -------- MODAL -------- */
-  .modal {
-    position: fixed; inset: 0;
-    background: rgba(12, 9, 6, 0.88);
-    backdrop-filter: blur(20px);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    padding: 24px;
-  }
-  .modal.open { display: flex; animation: fadeIn 0.3s ease; }
-  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+/* ── FOOTER ── */
+footer {
+  border-top: 1px solid var(--border); padding: 32px 40px;
+  display: flex; justify-content: space-between; align-items: center;
+  max-width: 100%; position: relative; z-index: 1;
+}
+.footer-brand { font-family: var(--serif); font-size: 14px; color: var(--text-3); }
+.footer-right { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--text-3); text-transform: uppercase; }
 
-  .modal-card {
-    background: var(--ink-soft);
-    border: 1px solid rgba(255, 94, 31, 0.25);
-    padding: 48px;
-    max-width: 560px;
-    width: 100%;
-    position: relative;
-    animation: riseIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
-    box-shadow: 0 40px 120px rgba(255, 94, 31, 0.15);
-  }
-  @keyframes riseIn {
-    from { opacity: 0; transform: translateY(30px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .modal-card::before {
-    content: '';
-    position: absolute;
-    top: -1px; left: -1px;
-    width: 60px; height: 60px;
-    border-top: 2px solid var(--ember);
-    border-left: 2px solid var(--ember);
-  }
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(10,8,18,0.8); backdrop-filter: blur(12px);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: var(--surface); border: 1px solid var(--border-h);
+  border-radius: 16px; padding: 44px 40px; max-width: 520px; width: 100%;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+  animation: modalIn 0.25s var(--ease-out) both;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.modal-tag { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--violet-l); margin-bottom: 12px; }
+.modal-title { font-family: var(--serif); font-size: 32px; font-weight: 300; font-style: italic; margin-bottom: 6px; }
+.modal-sub { font-size: 13px; color: var(--text-2); margin-bottom: 28px; line-height: 1.6; }
+.modal-link-row {
+  display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 20px;
+}
+.modal-link-row input {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: var(--text); font-family: var(--mono); font-size: 12px;
+  padding: 14px 16px; letter-spacing: 0.02em;
+}
+.copy-btn {
+  background: rgba(139,92,246,0.12); color: var(--violet-l);
+  border: none; border-left: 1px solid var(--border);
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em;
+  padding: 0 20px; cursor: pointer; font-weight: 500;
+  transition: background 0.2s;
+}
+.copy-btn:hover { background: rgba(139,92,246,0.22); }
+.copy-btn.copied { color: #6ee7b7; background: rgba(110,231,183,0.08); }
+.modal-enter {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 11px 20px; border-radius: 8px; font-family: var(--sans); font-size: 13px;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+  color: var(--text-2); text-decoration: none; cursor: pointer;
+  transition: all 0.2s;
+}
+.modal-enter:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+.modal-close {
+  position: absolute; top: 16px; right: 16px;
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  border: none; background: transparent; cursor: pointer; color: var(--text-3);
+  border-radius: 6px; font-size: 18px; transition: all 0.15s;
+}
+.modal-close:hover { background: rgba(255,255,255,0.06); color: var(--text-2); }
+.modal-box { position: relative; }
 
-  .modal-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: var(--ember);
-    margin-bottom: 16px;
-  }
-  .modal-title {
-    font-family: 'Fraunces', serif;
-    font-weight: 300;
-    font-size: 36px;
-    line-height: 1.1;
-    letter-spacing: -0.02em;
-    margin-bottom: 8px;
-  }
-  .modal-title em { font-style: italic; color: var(--ember-soft); }
-  .modal-sub {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--ash);
-    margin-bottom: 32px;
-  }
-
-  .link-box {
-    display: flex;
-    align-items: stretch;
-    border: 1px solid rgba(244, 237, 225, 0.15);
-    background: var(--ink);
-    margin-bottom: 24px;
-  }
-  .link-box input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    outline: none;
-    color: var(--bone);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    padding: 18px 20px;
-    letter-spacing: 0.02em;
-  }
-  .copy-btn {
-    background: var(--ember);
-    color: var(--ink);
-    border: none;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    padding: 0 28px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: background 0.2s;
-  }
-  .copy-btn:hover { background: #ff7a42; }
-  .copy-btn.copied { background: #7ac88a; }
-
-  .modal-actions {
-    display: flex;
-    gap: 16px;
-    align-items: center;
-  }
-  .join-btn {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    padding: 14px 24px;
-    background: transparent;
-    color: var(--bone);
-    border: 1px solid rgba(244, 237, 225, 0.2);
-    cursor: pointer;
-    text-decoration: none;
-    transition: all 0.2s;
-  }
-  .join-btn:hover { border-color: var(--ember); color: var(--ember); }
-
-  .close-x {
-    position: absolute;
-    top: 20px; right: 20px;
-    background: transparent;
-    border: none;
-    color: var(--ash);
-    font-size: 24px;
-    cursor: pointer;
-    width: 32px; height: 32px;
-    line-height: 1;
-  }
-  .close-x:hover { color: var(--bone); }
-
-  @media (max-width: 900px) {
-    .wrap { padding: 24px 20px; }
-    .hero { grid-template-columns: 1fr; gap: 40px; padding: 40px 0; }
-    .visual { max-width: 380px; margin: 0 auto; aspect-ratio: 4 / 5; }
-    .features { grid-template-columns: repeat(2, 1fr); }
-    .modal-card { padding: 32px 24px; }
-  }
-  @media (max-width: 520px) {
-    .features { grid-template-columns: 1fr; }
-    h1 { font-size: 56px; }
-    .lede { font-size: 16px; }
-  }
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  nav { padding: 0 20px; }
+  .features-grid { grid-template-columns: repeat(2, 1fr); }
+  .sphere-wrap { width: 300px; }
+}
+@media (max-width: 540px) {
+  .features-grid { grid-template-columns: 1fr; }
+  .hero-title { font-size: 46px; }
+  .btn-cta, .btn-secondary { width: 100%; justify-content: center; }
+  footer { flex-direction: column; gap: 8px; text-align: center; }
+}
 </style>
 </head>
 <body>
 
-<div class="wrap">
+<canvas id="bgCanvas"></canvas>
 
-  <nav>
-    <div class="logo"><span class="logo-dot"></span>EMBER / 001</div>
-    <div class="nav-meta">ZERO-TRACE · 60-MIN TTL</div>
+<div class="page" id="page">
+  <nav id="mainNav">
+    <a href="/" class="nav-logo">
+      <span class="nav-logo-dot"></span>
+      Ephemeral
+    </a>
+    <div class="nav-links" id="authNavContent">
+      <a href="/login.html" class="nav-link">Sign in</a>
+      <a href="/register.html" class="nav-btn">Get started</a>
+    </div>
   </nav>
 
   <section class="hero">
-    <div>
-      <div class="eyebrow">CHAT &nbsp;THAT&nbsp; BURNS</div>
-      <h1>
-        Say it.<br>
-        <em>Share it.</em><br>
-        <span class="strike">Forget it.</span>
-      </h1>
-      <p class="lede">
-        A private, two-person room that <strong>self-destructs in sixty minutes</strong>.
-        Text, voice notes, photos, video — gone when the embers die. No accounts.
-        No archive. No trace.
-      </p>
-      <div class="cta-row">
-        <button class="btn-primary" id="generateBtn">
-          Generate Link
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M1 7h12M8 2l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/>
-          </svg>
-        </button>
-        <a href="#how" class="btn-ghost">How it works</a>
-      </div>
+    <div class="hero-badge" id="heroBadge">
+      <span class="hero-badge-dot"></span>
+      Zero logs · Self-destructing · Private
+    </div>
+    <h1 class="hero-title" id="heroTitle">
+      Say it. Share it.<br>
+      <span class="through">Forget it.</span>
+    </h1>
+    <p class="hero-sub" id="heroSub">
+      A private room that self-destructs after 60 minutes.
+      No accounts required for guests, no archive, no trace.
+    </p>
+    <div class="hero-actions" id="heroActions">
+      <button class="btn-cta" id="generateBtn">
+        Create a room
+        <svg viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <a href="#how" class="btn-secondary">How it works</a>
     </div>
 
-    <div class="visual">
-      <div class="visual-meta">
-        <span>// SESSION.PREVIEW</span>
-        <span>T-60:00</span>
+    <div class="sphere-wrap" id="sphereWrap">
+      <canvas id="sphere"></canvas>
+      <div class="sphere-label">End-to-end ephemeral · 60-min TTL</div>
+    </div>
+  </section>
+
+  <section class="features-section" id="how">
+    <div class="section-label">What's included</div>
+    <div class="features-grid">
+      <div class="feat-card" data-delay="0">
+        <div class="feat-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="feat-name">Live text</div>
+        <div class="feat-desc">Real-time messages with typing indicators. Feels instant.</div>
       </div>
-      <div class="timer">
-        <svg viewBox="0 0 200 200">
-          <circle cx="100" cy="100" r="92" fill="none" stroke="rgba(244,237,225,0.08)" stroke-width="1"/>
-          <circle cx="100" cy="100" r="82" fill="none" stroke="rgba(255,94,31,0.15)" stroke-width="1" stroke-dasharray="2 4"/>
-          <!-- tick marks -->
-          <g stroke="var(--bone-dim)" stroke-width="1">
-            <line x1="100" y1="10" x2="100" y2="22"/>
-            <line x1="190" y1="100" x2="178" y2="100"/>
-            <line x1="100" y1="190" x2="100" y2="178"/>
-            <line x1="10" y1="100" x2="22" y2="100"/>
-          </g>
-          <!-- progress arc -->
-          <circle id="progress" cx="100" cy="100" r="92" fill="none"
-                  stroke="var(--ember)" stroke-width="2"
-                  stroke-dasharray="578" stroke-dashoffset="0"
-                  transform="rotate(-90 100 100)"
-                  style="filter: drop-shadow(0 0 6px var(--ember));"/>
-        </svg>
-        <div class="timer-num">60<small>MINUTES</small></div>
+      <div class="feat-card" data-delay="80">
+        <div class="feat-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        </div>
+        <div class="feat-name">Voice notes</div>
+        <div class="feat-desc">Record and send audio clips, up to 2 minutes each.</div>
       </div>
-      <div class="visual-caption">
-        <span>→</span> Auto-purge on expiry. Nothing stored. Nothing recovered.
+      <div class="feat-card" data-delay="160">
+        <div class="feat-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="1"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>
+        </div>
+        <div class="feat-name">Photos & video</div>
+        <div class="feat-desc">Share media up to 25 MB. Purged when the room expires.</div>
+      </div>
+      <div class="feat-card" data-delay="240">
+        <div class="feat-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </div>
+        <div class="feat-name">60-min timer</div>
+        <div class="feat-desc">Countdown runs in-room. At zero, everything is wiped.</div>
       </div>
     </div>
   </section>
 
-  <section class="features" id="how">
-    <div class="feat">
-      <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M4 6h16M4 12h12M4 18h8" stroke-linecap="square"/>
-      </svg>
-      <div class="feat-title">Live <em>text</em></div>
-      <div class="feat-desc">Instant messaging with typing indicators. Feels real, stays ephemeral.</div>
-    </div>
-    <div class="feat">
-      <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <rect x="9" y="3" width="6" height="12" rx="3"/>
-        <path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke-linecap="square"/>
-      </svg>
-      <div class="feat-title">Voice <em>notes</em></div>
-      <div class="feat-desc">Tap, hold, speak. Share moments that vanish with the room.</div>
-    </div>
-    <div class="feat">
-      <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <rect x="3" y="5" width="18" height="14" rx="1"/>
-        <circle cx="8.5" cy="10.5" r="1.5"/>
-        <path d="M21 15l-5-5-9 9"/>
-      </svg>
-      <div class="feat-title">Photo <em>&amp; video</em></div>
-      <div class="feat-desc">Drop images and clips up to 25MB. Previewed inline, purged on expiry.</div>
-    </div>
-    <div class="feat">
-      <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <circle cx="12" cy="12" r="9"/>
-        <path d="M12 7v5l3 2" stroke-linecap="square"/>
-      </svg>
-      <div class="feat-title">60-minute <em>TTL</em></div>
-      <div class="feat-desc">A live countdown in-room. When it hits zero, everything burns.</div>
+  <section class="how-section">
+    <div class="section-label">How it works</div>
+    <div class="how-steps">
+      <div class="how-step">
+        <span class="step-num">01</span>
+        <div>
+          <div class="step-title">Create a room</div>
+          <div class="step-desc">One click generates a unique link valid for 60 minutes. No setup needed.</div>
+        </div>
+      </div>
+      <div class="how-step">
+        <span class="step-num">02</span>
+        <div>
+          <div class="step-title">Share the link</div>
+          <div class="step-desc">Send it to one person. They join with any nickname — no account required.</div>
+        </div>
+      </div>
+      <div class="how-step">
+        <span class="step-num">03</span>
+        <div>
+          <div class="step-title">Chat freely</div>
+          <div class="step-desc">Text, voice, photos, video. The timer counts down in the corner.</div>
+        </div>
+      </div>
+      <div class="how-step">
+        <span class="step-num">04</span>
+        <div>
+          <div class="step-title">It vanishes</div>
+          <div class="step-desc">When time's up the room burns. Messages, files, everything — gone permanently.</div>
+        </div>
+      </div>
     </div>
   </section>
 
   <footer>
-    <span>© EMBER — NO LOGS, NO ACCOUNTS</span>
-    <span>BUILT FOR MOMENTS, NOT ARCHIVES</span>
+    <span class="footer-brand">Ephemeral</span>
+    <span class="footer-right">No logs · No archive · No trace</span>
   </footer>
 </div>
 
-<!-- Generate Link Modal -->
-<div class="modal" id="modal">
-  <div class="modal-card">
-    <button class="close-x" id="closeModal">×</button>
-    <div class="modal-label">LINK · READY</div>
-    <h2 class="modal-title">Your room is <em>lit</em>.</h2>
-    <p class="modal-sub">This link is valid for 60 minutes. Share it with one other person.</p>
-    <div class="link-box">
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box">
+    <button class="modal-close" id="closeModal">×</button>
+    <div class="modal-tag">Room ready</div>
+    <h2 class="modal-title">Your room is lit.</h2>
+    <p class="modal-sub">Share this link with one person. It expires in 60 minutes.</p>
+    <div class="modal-link-row">
       <input id="linkInput" readonly />
-      <button class="copy-btn" id="copyBtn">COPY</button>
+      <button class="copy-btn" id="copyBtn">Copy</button>
     </div>
-    <div class="modal-actions">
-      <a id="enterBtn" class="join-btn" href="#">Enter the room →</a>
-    </div>
+    <a id="enterBtn" class="modal-enter" href="#">
+      Enter room
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </a>
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  // Animate the preview progress ring on the landing page
-  const ring = document.getElementById('progress');
-  let t = 0;
-  setInterval(() => {
-    t = (t + 0.005) % 1;
-    ring.setAttribute('stroke-dashoffset', (578 * t).toString());
-  }, 40);
+const SUPABASE_URL  = 'https://gljtgjqfnpxrausecrcu.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsanRnanFmbnB4cmF1c2VjcmN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNTMxMTksImV4cCI6MjA5NTcyOTExOX0.KHUYJGVS_6EBzpYkGoKgBikkBavYs3V4hYetAPC-avc';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
-  const modal = document.getElementById('modal');
-  const generateBtn = document.getElementById('generateBtn');
-  const closeModal = document.getElementById('closeModal');
-  const linkInput = document.getElementById('linkInput');
-  const copyBtn = document.getElementById('copyBtn');
-  const enterBtn = document.getElementById('enterBtn');
+// Auth guard — redirect if not logged in
+sb.auth.getSession().then(({ data }) => {
+  if (!data?.session) { window.location.replace('/login.html'); return; }
+  updateNav(data.session.user);
+  document.getElementById('page').classList.add('ready');
+  initAnimations();
+});
 
-  generateBtn.addEventListener('click', async () => {
-    generateBtn.disabled = true;
-    generateBtn.textContent = 'Igniting…';
-    try {
-      const res = await fetch('/api/session', { method: 'POST' });
-      const data = await res.json();
-      const fullUrl = `${window.location.origin}${data.url}`;
-      linkInput.value = fullUrl;
-      enterBtn.href = data.url;
-      modal.classList.add('open');
-    } catch (e) {
-      alert('Could not create session. Try again.');
-    } finally {
-      generateBtn.disabled = false;
-      generateBtn.innerHTML = 'Generate Link <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7h12M8 2l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/></svg>';
-    }
+function updateNav(user) {
+  const nav = document.getElementById('authNavContent');
+  const email = user.email;
+  const short = email.length > 24 ? email.slice(0, 22) + '…' : email;
+  nav.innerHTML = `
+    <span style="font-size:12px;color:var(--text-3);font-family:var(--mono)">${short}</span>
+    <button class="sign-out-text" id="soBtn">Sign out</button>
+  `;
+  document.getElementById('soBtn').onclick = async () => {
+    await sb.auth.signOut(); window.location.href = '/login.html';
+  };
+}
+
+// Scroll nav
+window.addEventListener('scroll', () => {
+  document.getElementById('mainNav').classList.toggle('scrolled', scrollY > 10);
+});
+
+// Stagger animations after page is shown
+function initAnimations() {
+  requestAnimationFrame(() => {
+    ['heroBadge','heroTitle','heroSub','heroActions','sphereWrap'].forEach((id, i) => {
+      setTimeout(() => document.getElementById(id)?.classList.add('in'), i * 80);
+    });
+    // Feature cards via intersection observer
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        const delay = parseInt(entry.target.dataset.delay) || 0;
+        setTimeout(() => entry.target.classList.add('in'), delay);
+        obs.unobserve(entry.target);
+      });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.feat-card').forEach(el => obs.observe(el));
   });
+}
 
-  closeModal.addEventListener('click', () => modal.classList.remove('open'));
-  modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
+// Generate room
+document.getElementById('generateBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('generateBtn');
+  btn.textContent = 'Creating…'; btn.disabled = true;
+  try {
+    const res = await fetch('/api/session', { method: 'POST' });
+    const data = await res.json();
+    document.getElementById('linkInput').value = `${location.origin}${data.url}`;
+    document.getElementById('enterBtn').href = data.url;
+    document.getElementById('modal').classList.add('open');
+  } catch { alert('Could not create room. Please try again.'); }
+  finally { btn.innerHTML = 'Create a room <svg viewBox="0 0 16 16" fill="none" width="15" height="15"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'; btn.disabled = false; }
+});
 
-  copyBtn.addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(linkInput.value);
-    } catch {
-      linkInput.select();
-      document.execCommand('copy');
-    }
-    copyBtn.textContent = 'COPIED';
-    copyBtn.classList.add('copied');
-    setTimeout(() => {
-      copyBtn.textContent = 'COPY';
-      copyBtn.classList.remove('copied');
-    }, 1800);
+document.getElementById('closeModal').onclick = () => document.getElementById('modal').classList.remove('open');
+document.getElementById('modal').addEventListener('click', e => { if (e.target === document.getElementById('modal')) document.getElementById('modal').classList.remove('open'); });
+document.getElementById('copyBtn').addEventListener('click', async () => {
+  const val = document.getElementById('linkInput').value;
+  try { await navigator.clipboard.writeText(val); } catch { document.getElementById('linkInput').select(); document.execCommand('copy'); }
+  const btn = document.getElementById('copyBtn');
+  btn.textContent = 'Copied!'; btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+});
+
+// 3D Sphere — clean version
+(function() {
+  const canvas = document.getElementById('sphere');
+  const ctx = canvas.getContext('2d');
+  let W, H, cx, cy, mx = 0, my = 0;
+  const N = 110, R = 0.38;
+  let rotX = 0.3, rotY = 0;
+  const phi = (1 + Math.sqrt(5)) / 2;
+  const pts = Array.from({ length: N }, (_, i) => {
+    const t = Math.acos(1 - 2 * (i + 0.5) / N);
+    const p = 2 * Math.PI * i / phi;
+    return [Math.sin(t)*Math.cos(p), Math.sin(t)*Math.sin(p), Math.cos(t)];
   });
+  const edges = [];
+  for (let i = 0; i < N; i++) {
+    const ds = pts.map((q, j) => {
+      if (j === i) return { j, d: 99 };
+      const dx=pts[i][0]-q[0], dy=pts[i][1]-q[1], dz=pts[i][2]-q[2];
+      return { j, d: dx*dx+dy*dy+dz*dz };
+    }).sort((a,b)=>a.d-b.d).slice(1,4);
+    ds.forEach(({ j }) => { if (j > i) edges.push([i, j]); });
+  }
+  function resize() {
+    const p = canvas.parentElement.getBoundingClientRect();
+    const dpr = Math.min(devicePixelRatio, 2);
+    W = p.width; H = p.height;
+    canvas.width = W*dpr; canvas.height = H*dpr;
+    canvas.style.width = W+'px'; canvas.style.height = H+'px';
+    ctx.scale(dpr, dpr); cx = W/2; cy = H/2;
+  }
+  function proj([x,y,z]) {
+    // Y rotation
+    const cY = Math.cos(rotY), sY = Math.sin(rotY);
+    const x1 = x*cY + z*sY, z1 = -x*sY + z*cY;
+    // X rotation
+    const cX = Math.cos(rotX), sX = Math.sin(rotX);
+    const y1 = y*cX - z1*sX, z2 = y*sX + z1*cX;
+    const sc = (3.2/(3.2+z2)) * Math.min(W,H) * R;
+    return { x: cx + x1*sc, y: cy + y1*sc, z: z2 };
+  }
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+    rotY += 0.003 + mx * 0.000015;
+    rotX += my * 0.000012;
+    const ps = pts.map(proj);
+    edges.forEach(([a,b]) => {
+      const pa=ps[a], pb=ps[b];
+      const depth = (pa.z+pb.z)*0.5;
+      const alpha = Math.max(0, 0.05 + depth * 0.1);
+      ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y);
+      ctx.strokeStyle = `rgba(139,92,246,${alpha})`; ctx.lineWidth = 0.5; ctx.stroke();
+    });
+    ps.forEach((p, i) => {
+      const a = Math.max(0.05, 0.18 + p.z * 0.35);
+      const r = Math.max(0.5, 1.0 + p.z * 0.6);
+      const isHot = i % 9 === 0;
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI*2);
+      ctx.fillStyle = isHot ? `rgba(255,94,31,${a*1.6})` : `rgba(139,92,246,${a})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  resize(); window.addEventListener('resize', resize);
+  document.addEventListener('mousemove', e => { mx = e.clientX - innerWidth/2; my = e.clientY - innerHeight/2; });
+  draw();
+})();
+
+// Background: very few slow-drifting particles
+(function() {
+  const c = document.getElementById('bgCanvas');
+  const ctx = c.getContext('2d');
+  function resize() { c.width = innerWidth; c.height = innerHeight; }
+  resize(); addEventListener('resize', resize);
+  const ps = Array.from({ length: 22 }, () => ({
+    x: Math.random()*innerWidth, y: Math.random()*innerHeight,
+    vx: (Math.random()-.5)*0.15, vy: -(0.1+Math.random()*0.25),
+    r: 0.5+Math.random()*1.5, life: Math.random()*500,
+    maxLife: 400+Math.random()*400,
+    hue: Math.random() > 0.4 ? 265 : 20,
+  }));
+  (function loop() {
+    ctx.clearRect(0,0,c.width,c.height);
+    ps.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.life++;
+      const t = p.life/p.maxLife;
+      const a = Math.min(t*3, 1-t) * 0.35;
+      if (a <= 0 || p.y < -10) { p.y = c.height+10; p.x = Math.random()*c.width; p.life = 0; p.maxLife = 400+Math.random()*400; }
+      ctx.fillStyle = `hsla(${p.hue},70%,65%,${a})`;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+    });
+    requestAnimationFrame(loop);
+  })();
+})();
 </script>
 </body>
 </html>
